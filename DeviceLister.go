@@ -24,6 +24,7 @@ SOFTWARE.
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -34,7 +35,7 @@ import (
 )
 
 const ToolName string = "BELL XMC NBI DeviceLister"
-const ToolVersion string = "1.0"
+const ToolVersion string = "1.0.1"
 const HttpUserAgent string = ToolName + "/" + ToolVersion
 const GqlDeviceQuery string = `query {
 	network {
@@ -71,20 +72,25 @@ type DeviceList struct {
 
 func main() {
 	var host string
-	var httpTimeout int
+	var httpTimeout uint
+	var insecureHttps bool
 	var username string
 	var password string
 
 	flag.StringVar(&host, "host", "localhost", "XMC Hostname / IP")
-	flag.IntVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
+	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
+	flag.BoolVar(&insecureHttps, "insecurehttps", false, "Do not validate HTTPS certificates")
 	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
 	flag.StringVar(&password, "password", "", "Password for HTTP auth")
 	flag.Parse()
 
 	var apiUrl string = "https://" + host + ":8443/nbi/graphql"
-
-	nbiClient := http.Client {
-		Timeout: time.Second * time.Duration(httpTimeout),
+	httpTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHttps},
+	}
+	nbiClient := http.Client{
+		Transport: httpTransport,
+		Timeout:   time.Second * time.Duration(httpTimeout),
 	}
 
 	req, err := http.NewRequest(http.MethodGet, apiUrl, nil)
