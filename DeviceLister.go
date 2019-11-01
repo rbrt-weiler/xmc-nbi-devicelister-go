@@ -34,8 +34,8 @@ import (
 	"time"
 )
 
-const ToolName string = "BELL XMC NBI DeviceLister"
-const ToolVersion string = "1.0.1"
+const ToolName string = "BELL XMC NBI DeviceLister.go"
+const ToolVersion string = "1.0.2"
 const HttpUserAgent string = ToolName + "/" + ToolVersion
 const GqlDeviceQuery string = `query {
 	network {
@@ -43,6 +43,7 @@ const GqlDeviceQuery string = `query {
 		up
 		ip
 		sysName
+		nickName
 		deviceData {
 		  vendor
 		  family
@@ -60,6 +61,7 @@ type DeviceList struct {
 				Up         bool   `json:"up"`
 				IP         string `json:"ip"`
 				SysName    string `json:"sysName"`
+				NickName   string `json:"nickName"`
 				DeviceData struct {
 					Vendor    string `json:"vendor"`
 					Family    string `json:"family"`
@@ -122,17 +124,21 @@ func main() {
 	}
 
 	var family string
+	var devName string
 	for _, d := range devices.Data.Network.Devices {
+		family = d.DeviceData.Family
+		devName = d.SysName
 		if d.DeviceData.SubFamily != "" {
-			family = d.DeviceData.Family + " " + d.DeviceData.SubFamily
-		} else {
-			family = d.DeviceData.Family
+			family = family + " " + d.DeviceData.SubFamily
+		}
+		if devName == "" && d.NickName != "" {
+			devName = d.NickName
 		}
 		switch d.Up {
 		case true:
-			fmt.Printf("+ %s (%s %s \"%s\") is up.\n", d.IP, d.DeviceData.Vendor, family, d.SysName)
+			fmt.Printf("+ %s (%s %s \"%s\") is up.\n", d.IP, d.DeviceData.Vendor, family, devName)
 		default:
-			fmt.Printf("- %s (%s %s \"%s\") is down.\n", d.IP, d.DeviceData.Vendor, family, d.SysName)
+			fmt.Printf("- %s (%s %s \"%s\") is down.\n", d.IP, d.DeviceData.Vendor, family, devName)
 		}
 	}
 }
