@@ -111,6 +111,9 @@ func main() {
 	if getErr != nil {
 		log.Fatal(getErr)
 	}
+	if res.StatusCode != http.StatusOK {
+		log.Fatalf("Error: %s\n", res.Status)
+	}
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
