@@ -1,6 +1,6 @@
 # XMC NBI DeviceLister (Go)
 
-DeviceLister uses the GraphQL-based API provided by the Northbound Interface (NBI) of Extreme Management Center (XMC) to fetch and display a list of all devices. The list includes the following pieces of information for each device:
+DeviceLister uses the GraphQL-based API provided by the Northbound Interface (NBI) of [Extreme Management Center (XMC)](https://www.extremenetworks.com/product/extreme-management-center/) to fetch and display a list of all devices. The list includes the following pieces of information for each device:
 
   * up/down (as +/- and text)
   * IP address
