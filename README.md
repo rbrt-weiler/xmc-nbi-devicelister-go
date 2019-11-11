@@ -9,6 +9,15 @@ DeviceLister uses the GraphQL-based API provided by the Northbound Interface (NB
 
 The tool is intended to provide a quick overview of the managed devices and to serve as a starting point for other tools.
 
+## Branches
+
+This project uses two defined branches:
+
+  * `master` is the primary development branch. Code within `master` may be broken at any time.
+  * `stable` is reserved for code that compiles without errors and is tested. Track `stable` if you just want to use the software.
+
+Other branches, for example for developing specific features, may be created and deleted at any time.
+
 ## Running / Compiling
 
 Use `go run DeviceLister.go` to run the tool directly or `go build DeviceLister.go` to compile a binary.
