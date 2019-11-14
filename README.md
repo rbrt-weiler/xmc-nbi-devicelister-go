@@ -30,15 +30,17 @@ Tested with go1.11 and go1.13.
 
 <pre>
   -host string
-    	XMC Hostname / IP (default "localhost")
+        XMC Hostname / IP (default "localhost")
   -httptimeout uint
-    	Timeout for HTTP(S) connections (default 5)
+        Timeout for HTTP(S) connections (default 5)
   -insecurehttps
-    	Do not validate HTTPS certificates
+        Do not validate HTTPS certificates
   -password string
-    	Password for HTTP auth
+        Password for HTTP auth
   -username string
-    	Username for HTTP auth (default "admin")
+        Username for HTTP auth (default "admin")
+  -version
+        Print version information and exit
 </pre>
 
 ## Source

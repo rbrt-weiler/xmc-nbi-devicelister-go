@@ -31,11 +31,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
 const ToolName string = "BELL XMC NBI DeviceLister.go"
-const ToolVersion string = "1.0.2"
+const ToolVersion string = "1.1.0"
 const HttpUserAgent string = ToolName + "/" + ToolVersion
 const GqlDeviceQuery string = `query {
 	network {
@@ -78,13 +79,20 @@ func main() {
 	var insecureHttps bool
 	var username string
 	var password string
+	var printVersion bool
 
 	flag.StringVar(&host, "host", "localhost", "XMC Hostname / IP")
 	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
 	flag.BoolVar(&insecureHttps, "insecurehttps", false, "Do not validate HTTPS certificates")
 	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
 	flag.StringVar(&password, "password", "", "Password for HTTP auth")
+	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
 	flag.Parse()
+
+	if printVersion {
+		fmt.Println(HttpUserAgent)
+		os.Exit(0)
+	}
 
 	var apiUrl string = "https://" + host + ":8443/nbi/graphql"
 	httpTransport := &http.Transport{
