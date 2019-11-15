@@ -31,13 +31,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
-const ToolName string = "BELL XMC NBI DeviceLister.go"
-const ToolVersion string = "1.0.2"
-const HttpUserAgent string = ToolName + "/" + ToolVersion
-const GqlDeviceQuery string = `query {
+const toolName string = "BELL XMC NBI DeviceLister.go"
+const toolVersion string = "1.1.0"
+const httpUserAgent string = toolName + "/" + toolVersion
+const gqlDeviceQuery string = `query {
 	network {
 	  devices {
 		up
@@ -75,36 +76,43 @@ type DeviceList struct {
 func main() {
 	var host string
 	var httpTimeout uint
-	var insecureHttps bool
+	var insecureHTTPS bool
 	var username string
 	var password string
+	var printVersion bool
 
 	flag.StringVar(&host, "host", "localhost", "XMC Hostname / IP")
 	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
-	flag.BoolVar(&insecureHttps, "insecurehttps", false, "Do not validate HTTPS certificates")
+	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
 	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
 	flag.StringVar(&password, "password", "", "Password for HTTP auth")
+	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
 	flag.Parse()
 
-	var apiUrl string = "https://" + host + ":8443/nbi/graphql"
+	if printVersion {
+		fmt.Println(httpUserAgent)
+		os.Exit(0)
+	}
+
+	var apiURL string = "https://" + host + ":8443/nbi/graphql"
 	httpTransport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHttps},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHTTPS},
 	}
 	nbiClient := http.Client{
 		Transport: httpTransport,
 		Timeout:   time.Second * time.Duration(httpTimeout),
 	}
 
-	req, err := http.NewRequest(http.MethodGet, apiUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	req.Header.Set("User-Agent", HttpUserAgent)
+	req.Header.Set("User-Agent", httpUserAgent)
 	req.SetBasicAuth(username, password)
 
 	httpQuery := req.URL.Query()
-	httpQuery.Add("query", GqlDeviceQuery)
+	httpQuery.Add("query", gqlDeviceQuery)
 	req.URL.RawQuery = httpQuery.Encode()
 
 	res, getErr := nbiClient.Do(req)
