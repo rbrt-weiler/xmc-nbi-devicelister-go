@@ -35,27 +35,16 @@ import (
 	"time"
 )
 
-const toolName string = "BELL XMC NBI DeviceLister.go"
-const toolVersion string = "1.1.0"
-const httpUserAgent string = toolName + "/" + toolVersion
-const gqlDeviceQuery string = `query {
-	network {
-	  devices {
-		up
-		ip
-		sysName
-		nickName
-		deviceData {
-		  vendor
-		  family
-		  subFamily
-		}
-	  }
-	}
-  }`
+const (
+	toolName       string = "BELL XMC NBI DeviceLister.go"
+	toolVersion    string = "2.0.0-dev"
+	httpUserAgent  string = toolName + "/" + toolVersion
+	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
+	errSuccess     int    = 0
+)
 
 // created with https://mholt.github.io/json-to-go/
-type DeviceList struct {
+type deviceList struct {
 	Data struct {
 		Network struct {
 			Devices []struct {
@@ -74,14 +63,14 @@ type DeviceList struct {
 }
 
 func main() {
-	var host string
+	var httpHost string
 	var httpTimeout uint
 	var insecureHTTPS bool
 	var username string
 	var password string
 	var printVersion bool
 
-	flag.StringVar(&host, "host", "localhost", "XMC Hostname / IP")
+	flag.StringVar(&httpHost, "host", "localhost", "XMC Hostname / IP")
 	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
 	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
 	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
@@ -91,10 +80,10 @@ func main() {
 
 	if printVersion {
 		fmt.Println(httpUserAgent)
-		os.Exit(0)
+		os.Exit(errSuccess)
 	}
 
-	var apiURL string = "https://" + host + ":8443/nbi/graphql"
+	var apiURL string = "https://" + httpHost + ":8443/nbi/graphql"
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHTTPS},
 	}
@@ -128,7 +117,7 @@ func main() {
 		log.Fatal(readErr)
 	}
 
-	devices := DeviceList{}
+	devices := deviceList{}
 	jsonErr := json.Unmarshal(body, &devices)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
