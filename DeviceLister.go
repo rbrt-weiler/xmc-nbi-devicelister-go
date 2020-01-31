@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2019 BELL Computer-Netzwerke GmbH
-Copyright (c) 2019 Robert Weiler
+Copyright (c) 2019,2020 Robert Weiler <https://robert.weiler.one/>
+Copyright (c) 2019 BELL Computer-Netzwerke GmbH <https://www.bell.de/>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,13 @@ SOFTWARE.
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"time"
+
+	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
 
 const (
@@ -83,42 +81,22 @@ func main() {
 		os.Exit(errSuccess)
 	}
 
-	var apiURL string = "https://" + httpHost + ":8443/nbi/graphql"
-	httpTransport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHTTPS},
+	client := xmcnbiclient.New(httpHost)
+	client.UseHTTPS()
+	client.UseSecureHTTPS()
+	if insecureHTTPS {
+		client.UseInsecureHTTPS()
 	}
-	nbiClient := http.Client{
-		Transport: httpTransport,
-		Timeout:   time.Second * time.Duration(httpTimeout),
-	}
+	client.SetUserAgent(httpUserAgent)
+	client.UseBasicAuth(username, password)
 
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Set("User-Agent", httpUserAgent)
-	req.SetBasicAuth(username, password)
-
-	httpQuery := req.URL.Query()
-	httpQuery.Add("query", gqlDeviceQuery)
-	req.URL.RawQuery = httpQuery.Encode()
-
-	res, getErr := nbiClient.Do(req)
-	if getErr != nil {
-		log.Fatal(getErr)
-	}
-	if res.StatusCode != http.StatusOK {
-		log.Fatalf("Error: %s\n", res.Status)
-	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		log.Fatal(readErr)
+	res, resErr := client.QueryAPI(gqlDeviceQuery)
+	if resErr != nil {
+		log.Fatal(resErr)
 	}
 
 	devices := deviceList{}
-	jsonErr := json.Unmarshal(body, &devices)
+	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
