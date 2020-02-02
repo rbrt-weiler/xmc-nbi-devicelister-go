@@ -1,6 +1,6 @@
 # XMC NBI DeviceLister (Go)
 
-DeviceLister uses the GraphQL-based API provided by the Northbound Interface (NBI) of [Extreme Management Center (XMC)](https://www.extremenetworks.com/product/extreme-management-center/) to fetch and display a list of all devices. The list includes the following pieces of information for each device:
+DeviceLister uses the GraphQL-based API provided by the Northbound Interface (NBI) of [Extreme Management Center](https://www.extremenetworks.com/product/extreme-management-center/) (XMC; formerly known as NetSight) to fetch and display a list of all devices. The list includes the following pieces of information for each device:
 
   * up/down (as +/- and text)
   * IP address
@@ -18,29 +18,42 @@ This project uses two defined branches:
 
 Other branches, for example for developing specific features, may be created and deleted at any time.
 
+## Dependencies
+
+DeviceLister uses the [module xmcnbiclient](https://gitlab.com/rbrt-weiler/go-module-xmcnbiclient). This module has to be installed with `go get gitlab.com/rbrt-weiler/go-module-xmcnbiclient` or updated with `go get -u gitlab.com/rbrt-weiler/go-module-xmcnbiclient` before running or compiling DeviceLister. All other dependencies are included in a standard Go installation.
+
 ## Running / Compiling
 
 Use `go run DeviceLister.go` to run the tool directly or `go build DeviceLister.go` to compile a binary.
 
-Tested with go1.11 and go1.13.
+Tested with [go1.13](https://golang.org/doc/go1.13).
 
 ## Usage
 
 `DeviceLister -h`:
 
 <pre>
+Available options:
+  -clientid string
+    	Client ID for OAuth
+  -clientsecret string
+    	Client Secret for OAuth
   -host string
-        XMC Hostname / IP (default "localhost")
-  -httptimeout uint
-        Timeout for HTTP(S) connections (default 5)
+    	XMC Hostname / IP (default "localhost")
   -insecurehttps
-        Do not validate HTTPS certificates
+    	Do not validate HTTPS certificates
+  -nohttps
+    	Use HTTP instead of HTTPS
   -password string
-        Password for HTTP auth
+    	Password for HTTP Basic Auth
+  -timeout uint
+    	Timeout for HTTP(S) connections (default 5)
   -username string
-        Username for HTTP auth (default "admin")
+    	Username for HTTP Basic Auth (default "admin")
   -version
-        Print version information and exit
+    	Print version information and exit
+
+OAuth will be preferred over username/password.
 </pre>
 
 ## Source

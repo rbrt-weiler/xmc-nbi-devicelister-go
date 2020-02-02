@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
@@ -62,18 +63,34 @@ type deviceList struct {
 
 func main() {
 	var httpHost string
-	var httpTimeout uint
+	var httpTimeoutSecs uint
+	var noHTTPS bool
 	var insecureHTTPS bool
 	var username string
 	var password string
+	var clientID string
+	var clientSecret string
 	var printVersion bool
 
 	flag.StringVar(&httpHost, "host", "localhost", "XMC Hostname / IP")
-	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
+	flag.UintVar(&httpTimeoutSecs, "timeout", 5, "Timeout for HTTP(S) connections")
+	flag.BoolVar(&noHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
 	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
-	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
-	flag.StringVar(&password, "password", "", "Password for HTTP auth")
+	flag.StringVar(&username, "username", "admin", "Username for HTTP Basic Auth")
+	flag.StringVar(&password, "password", "", "Password for HTTP Basic Auth")
+	flag.StringVar(&clientID, "clientid", "", "Client ID for OAuth")
+	flag.StringVar(&clientSecret, "clientsecret", "", "Client Secret for OAuth")
 	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "This tool fetches lists all devices XMC knows about with up/down information.\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Available options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "OAuth will be preferred over username/password.\n")
+	}
 	flag.Parse()
 
 	if printVersion {
@@ -82,13 +99,23 @@ func main() {
 	}
 
 	client := xmcnbiclient.New(httpHost)
+	client.SetUserAgent(httpUserAgent)
 	client.UseHTTPS()
+	if noHTTPS {
+		client.UseHTTP()
+	}
+	client.UseBasicAuth(username, password)
+	if clientID != "" && clientSecret != "" {
+		client.UseOAuth(clientID, clientSecret)
+	}
 	client.UseSecureHTTPS()
 	if insecureHTTPS {
 		client.UseInsecureHTTPS()
 	}
-	client.SetUserAgent(httpUserAgent)
-	client.UseBasicAuth(username, password)
+	timeoutErr := client.SetTimeout(httpTimeoutSecs)
+	if timeoutErr != nil {
+		log.Fatalf("Could not set HTTP timeout: %s\n", timeoutErr)
+	}
 
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
 	if resErr != nil {
