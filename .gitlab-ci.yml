@@ -1,29 +1,147 @@
-image: golang:1.11
+image: golang:1.13
+
+
 
 stages:
   - build
+  - test
+  - deploy
 
-build-win64-executable:
+
+
+before_script:
+  - mkdir -p binaries
+
+after_script:
+  - ls -l binaries
+
+# do not forget to set project variables
+include:
+  - template: SAST.gitlab-ci.yml # GITLAB_FEATURES = "sast"
+  - template: License-Management.gitlab-ci.yml # GITLAB_FEATURES = "license_management"
+
+variables:
+  SAST_DISABLE_DIND: "true"
+  SAST_GOSEC_LEVEL: 0
+
+
+
+.build_command: &build_command
+- go get gitlab.com/rbrt-weiler/go-module-xmcnbiclient
+- go build -o binaries/DeviceLister DeviceLister.go
+
+.build_command_release: &build_command_release
+- go get gitlab.com/rbrt-weiler/go-module-xmcnbiclient
+- GOOS=linux GOARCH=amd64 go build -o binaries/DeviceLister_${CI_COMMIT_TAG}_${CI_COMMIT_SHORT_SHA}_linux-amd64 DeviceLister.go
+- GOOS=windows GOARCH=amd64 go build -o binaries/DeviceLister_${CI_COMMIT_TAG}_${CI_COMMIT_SHORT_SHA}_win-amd64.exe DeviceLister.go
+- GOOS=darwin GOARCH=amd64 go build -o binaries/DeviceLister_${CI_COMMIT_TAG}_${CI_COMMIT_SHORT_SHA}_darwin-amd64 DeviceLister.go
+
+.test_command: &test_command
+- ./binaries/DeviceLister -version
+
+.release_command: &release_command
+- rm binaries/DeviceLister
+- ln -s binaries DeviceLister_${CI_COMMIT_TAG}
+
+
+
+build-master:
+  stage: build
+  except:
+    - stable
+    - tags
+  cache:
+    key: "dev-$CI_COMMIT_SHA"
+    paths:
+      - binaries
+  script:
+    - *build_command
+  allow_failure: true
+
+test-master:
+  stage: test
+  except:
+    - stable
+    - tags
+  cache:
+    key: "dev-$CI_COMMIT_SHA"
+    paths:
+      - binaries
+  script:
+    - *test_command
+  allow_failure: true
+
+
+
+build-stable:
   stage: build
   only:
     - stable
+  except:
+    - tags
+  cache:
+    key: "staging-$CI_COMMIT_SHA"
+    paths:
+      - binaries
   script:
-    - mkdir binaries
-    - GOOS=windows GOARCH=amd64 go build -o binaries/DeviceLister_$GOOS_$GOARCH.exe DeviceLister.go
+    - *build_command
 
-build-linux64-executable:
-  stage: build
+test-stable:
+  stage: test
   only:
     - stable
+  except:
+    - tags
+  cache:
+    key: "staging-$CI_COMMIT_SHA"
+    paths:
+      - binaries
   script:
-    - mkdir binaries
-    - GOOS=linux GOARCH=amd64 go build -o binaries/DeviceLister_$GOOS_$GOARCH DeviceLister.go
+    - *test_command
+  artifacts:
+    when: on_success
+    expire_in: 30 minutes
+    name: "DeviceLister_${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - binaries/*
 
-build-darwin64-executable:
+
+
+build-tagged:
   stage: build
   only:
-    - stable
+    - tags
+  cache:
+    key: "release-$CI_COMMIT_SHA"
+    paths:
+      - binaries
   script:
-    - mkdir binaries
-    - GOOS=darwin GOARCH=amd64 go build -o binaries/DeviceLister_$GOOS_$GOARCH DeviceLister.go
+    - *build_command
+    - *build_command_release
 
+test-tagged:
+  stage: test
+  only:
+    - tags
+  cache:
+    key: "release-$CI_COMMIT_SHA"
+    paths:
+      - binaries
+  script:
+    - *test_command
+
+deploy-tagged:
+  stage: deploy
+  only:
+    - tags
+  cache:
+    key: "release-$CI_COMMIT_SHA"
+    paths:
+      - binaries
+  script:
+    - *release_command
+  artifacts:
+    when: on_success
+    name: "DeviceLister_${CI_COMMIT_TAG}"
+    paths:
+      - DeviceLister_${CI_COMMIT_TAG}/*
