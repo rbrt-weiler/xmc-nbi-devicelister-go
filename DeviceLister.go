@@ -1,6 +1,6 @@
 /*
-Copyright (c) 2019 BELL Computer-Netzwerke GmbH
-Copyright (c) 2019 Robert Weiler
+Copyright (c) 2019,2020 Robert Weiler <https://robert.weiler.one/>
+Copyright (c) 2019 BELL Computer-Netzwerke GmbH <https://www.bell.de/>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,38 +24,26 @@ SOFTWARE.
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"time"
+	"path"
+
+	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
 
-const toolName string = "BELL XMC NBI DeviceLister.go"
-const toolVersion string = "1.1.0"
-const httpUserAgent string = toolName + "/" + toolVersion
-const gqlDeviceQuery string = `query {
-	network {
-	  devices {
-		up
-		ip
-		sysName
-		nickName
-		deviceData {
-		  vendor
-		  family
-		  subFamily
-		}
-	  }
-	}
-  }`
+const (
+	toolName       string = "DeviceLister.go"
+	toolVersion    string = "2.0.0"
+	httpUserAgent  string = toolName + "/" + toolVersion
+	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
+	errSuccess     int    = 0
+)
 
 // created with https://mholt.github.io/json-to-go/
-type DeviceList struct {
+type deviceList struct {
 	Data struct {
 		Network struct {
 			Devices []struct {
@@ -74,62 +62,68 @@ type DeviceList struct {
 }
 
 func main() {
-	var host string
-	var httpTimeout uint
+	var httpHost string
+	var httpTimeoutSecs uint
+	var noHTTPS bool
 	var insecureHTTPS bool
 	var username string
 	var password string
+	var clientID string
+	var clientSecret string
 	var printVersion bool
 
-	flag.StringVar(&host, "host", "localhost", "XMC Hostname / IP")
-	flag.UintVar(&httpTimeout, "httptimeout", 5, "Timeout for HTTP(S) connections")
+	flag.StringVar(&httpHost, "host", "localhost", "XMC Hostname / IP")
+	flag.UintVar(&httpTimeoutSecs, "timeout", 5, "Timeout for HTTP(S) connections")
+	flag.BoolVar(&noHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
 	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
-	flag.StringVar(&username, "username", "admin", "Username for HTTP auth")
-	flag.StringVar(&password, "password", "", "Password for HTTP auth")
+	flag.StringVar(&username, "username", "admin", "Username for HTTP Basic Auth")
+	flag.StringVar(&password, "password", "", "Password for HTTP Basic Auth")
+	flag.StringVar(&clientID, "clientid", "", "Client ID for OAuth")
+	flag.StringVar(&clientSecret, "clientsecret", "", "Client Secret for OAuth")
 	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "This tool fetches lists all devices XMC knows about with up/down information.\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Available options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "OAuth will be preferred over username/password.\n")
+	}
 	flag.Parse()
 
 	if printVersion {
 		fmt.Println(httpUserAgent)
-		os.Exit(0)
+		os.Exit(errSuccess)
 	}
 
-	var apiURL string = "https://" + host + ":8443/nbi/graphql"
-	httpTransport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureHTTPS},
+	client := xmcnbiclient.New(httpHost)
+	client.SetUserAgent(httpUserAgent)
+	client.UseHTTPS()
+	if noHTTPS {
+		client.UseHTTP()
 	}
-	nbiClient := http.Client{
-		Transport: httpTransport,
-		Timeout:   time.Second * time.Duration(httpTimeout),
+	client.UseBasicAuth(username, password)
+	if clientID != "" && clientSecret != "" {
+		client.UseOAuth(clientID, clientSecret)
 	}
-
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
-	if err != nil {
-		log.Fatal(err)
+	client.UseSecureHTTPS()
+	if insecureHTTPS {
+		client.UseInsecureHTTPS()
 	}
-
-	req.Header.Set("User-Agent", httpUserAgent)
-	req.SetBasicAuth(username, password)
-
-	httpQuery := req.URL.Query()
-	httpQuery.Add("query", gqlDeviceQuery)
-	req.URL.RawQuery = httpQuery.Encode()
-
-	res, getErr := nbiClient.Do(req)
-	if getErr != nil {
-		log.Fatal(getErr)
-	}
-	if res.StatusCode != http.StatusOK {
-		log.Fatalf("Error: %s\n", res.Status)
+	timeoutErr := client.SetTimeout(httpTimeoutSecs)
+	if timeoutErr != nil {
+		log.Fatalf("Could not set HTTP timeout: %s\n", timeoutErr)
 	}
 
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		log.Fatal(readErr)
+	res, resErr := client.QueryAPI(gqlDeviceQuery)
+	if resErr != nil {
+		log.Fatal(resErr)
 	}
 
-	devices := DeviceList{}
-	jsonErr := json.Unmarshal(body, &devices)
+	devices := deviceList{}
+	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
