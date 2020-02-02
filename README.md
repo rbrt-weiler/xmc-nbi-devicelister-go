@@ -24,7 +24,7 @@ DeviceLister uses the [module xmcnbiclient](https://gitlab.com/rbrt-weiler/go-mo
 
 ## Running / Compiling
 
-Use `go run DeviceLister.go` to run the tool directly or `go build DeviceLister.go` to compile a binary.
+Use `go run DeviceLister.go` to run the tool directly or `go build DeviceLister.go` to compile a binary. Prebuilt binaries may be available as artifacts from the GitLab CI/CD [pipeline for tagged releases](https://gitlab.com/rbrt-weiler/xmc-nbi-devicelister-go/pipelines?scope=tags).
 
 Tested with [go1.13](https://golang.org/doc/go1.13).
 
