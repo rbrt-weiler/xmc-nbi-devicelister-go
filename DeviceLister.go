@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	toolName       string = "BELL XMC NBI DeviceLister.go"
+	toolName       string = "DeviceLister.go"
 	toolVersion    string = "2.0.0-dev"
 	httpUserAgent  string = toolName + "/" + toolVersion
 	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
