@@ -20,7 +20,12 @@ Other branches, for example for developing specific features, may be created and
 
 ## Dependencies
 
-DeviceLister uses the [module xmcnbiclient](https://gitlab.com/rbrt-weiler/go-module-xmcnbiclient). This module has to be installed with `go get gitlab.com/rbrt-weiler/go-module-xmcnbiclient` or updated with `go get -u gitlab.com/rbrt-weiler/go-module-xmcnbiclient` before running or compiling DeviceLister. All other dependencies are included in a standard Go installation.
+DeviceLister uses the modules [envordef](https://gitlab.com/rbrt-weiler/go-module-envordef) and [xmcnbiclient](https://gitlab.com/rbrt-weiler/go-module-xmcnbiclient). Execute...
+
+1. `go get -u gitlab.com/rbrt-weiler/go-module-envordef`
+1. `go get -u gitlab.com/rbrt-weiler/go-module-xmcnbiclient`
+
+...before running or compiling DeviceLister. All other dependencies are included in a standard Go installation.
 
 ## Running / Compiling
 
@@ -35,25 +40,36 @@ Tested with [go1.13](https://golang.org/doc/go1.13).
 <pre>
 Available options:
   -basicauth
-        Use HTTP Basic Auth instead of OAuth
+    	Use HTTP Basic Auth instead of OAuth (default true)
   -host string
-        XMC Hostname / IP
+    	XMC Hostname / IP (default "xmc.de-rrhtlp.w1-int.weiler.one")
   -insecurehttps
-        Do not validate HTTPS certificates
+    	Do not validate HTTPS certificates (default true)
   -nohttps
-        Use HTTP instead of HTTPS
+    	Use HTTP instead of HTTPS
   -path string
-        Path where XMC is reachable
+    	Path where XMC is reachable
   -port uint
-        HTTP port where XMC is listening (default 8443)
+    	HTTP port where XMC is listening (default 8443)
   -secret string
-        Client Secret (OAuth) or password (Basic Auth) for authentication
+    	Client Secret (OAuth) or password (Basic Auth) for authentication (default "abc123")
   -timeout uint
-        Timeout for HTTP(S) connections (default 5)
+    	Timeout for HTTP(S) connections (default 5)
   -userid string
-        Client ID (OAuth) or username (Basic Auth) for authentication
+    	Client ID (OAuth) or username (Basic Auth) for authentication (default "root")
   -version
-        Print version information and exit
+    	Print version information and exit
+
+All options that take a value can be set via environment variables:
+  XMCHOST       -->  -host
+  XMCPORT       -->  -port
+  XMCPATH       -->  -path
+  XMCTIMEOUT    -->  -timeout
+  XMCNOHTTPS    -->  -nohttps
+  XMCINSECURE   -->  -insecurehttps
+  XMCUSERID     -->  -userid
+  XMCSECRET     -->  -secret
+  XMCBASICAUTH  -->  -basicauth
 </pre>
 
 ## Authentication
