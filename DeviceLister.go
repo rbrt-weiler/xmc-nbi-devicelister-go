@@ -36,11 +36,26 @@ import (
 
 const (
 	toolName       string = "DeviceLister.go"
-	toolVersion    string = "2.0.0"
-	httpUserAgent  string = toolName + "/" + toolVersion
+	toolVersion    string = "3.0.0-dev"
+	toolID         string = toolName + "/" + toolVersion
 	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
 	errSuccess     int    = 0
+	errGeneric     int    = 1
+	errUsage       int    = 2
 )
+
+type appConfig struct {
+	XMCHost       string
+	XMCPort       uint
+	XMCPath       string
+	HTTPTimeout   uint
+	NoHTTPS       bool
+	InsecureHTTPS bool
+	BasicAuth     bool
+	XMCUserID     string
+	XMCSecret     string
+	PrintVersion  bool
+}
 
 // created with https://mholt.github.io/json-to-go/
 type deviceList struct {
@@ -61,60 +76,68 @@ type deviceList struct {
 	} `json:"data"`
 }
 
-func main() {
-	var httpHost string
-	var httpTimeoutSecs uint
-	var noHTTPS bool
-	var insecureHTTPS bool
-	var username string
-	var password string
-	var clientID string
-	var clientSecret string
-	var printVersion bool
+var (
+	config appConfig
+)
 
-	flag.StringVar(&httpHost, "host", "localhost", "XMC Hostname / IP")
-	flag.UintVar(&httpTimeoutSecs, "timeout", 5, "Timeout for HTTP(S) connections")
-	flag.BoolVar(&noHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
-	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
-	flag.StringVar(&username, "username", "admin", "Username for HTTP Basic Auth")
-	flag.StringVar(&password, "password", "", "Password for HTTP Basic Auth")
-	flag.StringVar(&clientID, "clientid", "", "Client ID for OAuth")
-	flag.StringVar(&clientSecret, "clientsecret", "", "Client Secret for OAuth")
-	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
+func parseCLIOptions() {
+	flag.StringVar(&config.XMCHost, "host", "", "XMC Hostname / IP")
+	flag.UintVar(&config.XMCPort, "port", 8443, "HTTP port where XMC is listening")
+	flag.StringVar(&config.XMCPath, "path", "", "Path where XMC is reachable")
+	flag.UintVar(&config.HTTPTimeout, "timeout", 5, "Timeout for HTTP(S) connections")
+	flag.BoolVar(&config.NoHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
+	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
+	flag.StringVar(&config.XMCUserID, "userid", "", "Client ID (OAuth) or username (Basic Auth) for authentication")
+	flag.StringVar(&config.XMCSecret, "secret", "", "Client Secret (OAuth) or password (Basic Auth) for authentication")
+	flag.BoolVar(&config.BasicAuth, "basicauth", false, "Use HTTP Basic Auth instead of OAuth")
+	flag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "This tool fetches lists all devices XMC knows about with up/down information.\n")
+		fmt.Fprintf(os.Stderr, "This tool queries the XMC API and prints the raw reply (JSON) to stdout.\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Available options:\n")
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "OAuth will be preferred over username/password.\n")
+		os.Exit(errUsage)
 	}
 	flag.Parse()
+}
 
-	if printVersion {
-		fmt.Println(httpUserAgent)
+func main() {
+	parseCLIOptions()
+
+	if config.PrintVersion {
+		fmt.Println(toolID)
 		os.Exit(errSuccess)
 	}
+	if config.XMCHost == "" {
+		fmt.Fprintln(os.Stderr, "Variable -host must be defined. Use -h to get help.")
+		os.Exit(errUsage)
+	}
 
-	client := xmcnbiclient.New(httpHost)
-	client.SetUserAgent(httpUserAgent)
-	client.UseHTTPS()
-	if noHTTPS {
-		client.UseHTTP()
-	}
-	client.UseBasicAuth(username, password)
-	if clientID != "" && clientSecret != "" {
-		client.UseOAuth(clientID, clientSecret)
-	}
-	client.UseSecureHTTPS()
-	if insecureHTTPS {
-		client.UseInsecureHTTPS()
-	}
-	timeoutErr := client.SetTimeout(httpTimeoutSecs)
+	client := xmcnbiclient.New(config.XMCHost)
+	client.SetUserAgent(toolID)
+	timeoutErr := client.SetTimeout(config.HTTPTimeout)
 	if timeoutErr != nil {
 		log.Fatalf("Could not set HTTP timeout: %s\n", timeoutErr)
+	}
+	client.UseSecureHTTPS()
+	if config.InsecureHTTPS {
+		client.UseInsecureHTTPS()
+	}
+	client.UseHTTPS()
+	if config.NoHTTPS {
+		client.UseHTTP()
+	}
+	portErr := client.SetPort(config.XMCPort)
+	if portErr != nil {
+		fmt.Fprintf(os.Stderr, "Port could not be set: %s\n", portErr)
+		os.Exit(errGeneric)
+	}
+	client.SetBasePath(config.XMCPath)
+	client.UseOAuth(config.XMCUserID, config.XMCSecret)
+	if config.BasicAuth {
+		client.UseBasicAuth(config.XMCUserID, config.XMCSecret)
 	}
 
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
@@ -146,4 +169,6 @@ func main() {
 			fmt.Printf("- %s (%s %s \"%s\") is down.\n", d.IP, d.DeviceData.Vendor, family, devName)
 		}
 	}
+
+	os.Exit(errSuccess)
 }
