@@ -31,6 +31,7 @@ import (
 	"os"
 	"path"
 
+	envordef "gitlab.com/rbrt-weiler/go-module-envordef"
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
 
@@ -81,15 +82,15 @@ var (
 )
 
 func parseCLIOptions() {
-	flag.StringVar(&config.XMCHost, "host", "", "XMC Hostname / IP")
-	flag.UintVar(&config.XMCPort, "port", 8443, "HTTP port where XMC is listening")
-	flag.StringVar(&config.XMCPath, "path", "", "Path where XMC is reachable")
-	flag.UintVar(&config.HTTPTimeout, "timeout", 5, "Timeout for HTTP(S) connections")
-	flag.BoolVar(&config.NoHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
-	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
-	flag.StringVar(&config.XMCUserID, "userid", "", "Client ID (OAuth) or username (Basic Auth) for authentication")
-	flag.StringVar(&config.XMCSecret, "secret", "", "Client Secret (OAuth) or password (Basic Auth) for authentication")
-	flag.BoolVar(&config.BasicAuth, "basicauth", false, "Use HTTP Basic Auth instead of OAuth")
+	flag.StringVar(&config.XMCHost, "host", envordef.StringVal("XMCHOST", ""), "XMC Hostname / IP")
+	flag.UintVar(&config.XMCPort, "port", envordef.UintVal("XMCPORT", 8443), "HTTP port where XMC is listening")
+	flag.StringVar(&config.XMCPath, "path", envordef.StringVal("XMCPATH", ""), "Path where XMC is reachable")
+	flag.UintVar(&config.HTTPTimeout, "timeout", envordef.UintVal("XMCTIMEOUT", 5), "Timeout for HTTP(S) connections")
+	flag.BoolVar(&config.NoHTTPS, "nohttps", envordef.BoolVal("XMCNOHTTPS", false), "Use HTTP instead of HTTPS")
+	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", envordef.BoolVal("XMCINSECURE", false), "Do not validate HTTPS certificates")
+	flag.StringVar(&config.XMCUserID, "userid", envordef.StringVal("XMCUSERID", ""), "Client ID (OAuth) or username (Basic Auth) for authentication")
+	flag.StringVar(&config.XMCSecret, "secret", envordef.StringVal("XMCSECRET", ""), "Client Secret (OAuth) or password (Basic Auth) for authentication")
+	flag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
 	flag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "This tool queries the XMC API and prints the raw reply (JSON) to stdout.\n")
@@ -98,6 +99,17 @@ func parseCLIOptions() {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Available options:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "All options that take a value can be set via environment variables:\n")
+		fmt.Fprintf(os.Stderr, "  XMCHOST       -->  -host\n")
+		fmt.Fprintf(os.Stderr, "  XMCPORT       -->  -port\n")
+		fmt.Fprintf(os.Stderr, "  XMCPATH       -->  -path\n")
+		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT    -->  -timeout\n")
+		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS    -->  -nohttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCINSECURE   -->  -insecurehttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCUSERID     -->  -userid\n")
+		fmt.Fprintf(os.Stderr, "  XMCSECRET     -->  -secret\n")
+		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH  -->  -basicauth\n")
 		os.Exit(errUsage)
 	}
 	flag.Parse()
