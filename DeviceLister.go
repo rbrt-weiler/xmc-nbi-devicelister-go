@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 
 	godotenv "github.com/joho/godotenv"
 	envordef "gitlab.com/rbrt-weiler/go-module-envordef"
@@ -198,6 +199,9 @@ func main() {
 	var devName string
 	var stateSym string
 	var stateText string
+	sort.Slice(devices.Data.Network.Devices[:], func(i int, j int) bool {
+		return devices.Data.Network.Devices[i].IP < devices.Data.Network.Devices[j].IP
+	})
 	for _, d := range devices.Data.Network.Devices {
 		family = d.DeviceData.Family
 		if d.DeviceData.SubFamily != "" {
