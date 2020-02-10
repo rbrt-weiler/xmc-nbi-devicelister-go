@@ -38,7 +38,7 @@ import (
 
 const (
 	toolName            string = "DeviceLister.go"
-	toolVersion         string = "3.0.0-dev"
+	toolVersion         string = "3.0.0"
 	toolID              string = toolName + "/" + toolVersion
 	envFileName         string = ".xmcenv"
 	gqlDeviceQuery      string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
