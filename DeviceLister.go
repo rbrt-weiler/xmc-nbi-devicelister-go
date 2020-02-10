@@ -27,20 +27,41 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path"
+	"sort"
 
+	godotenv "github.com/joho/godotenv"
+	envordef "gitlab.com/rbrt-weiler/go-module-envordef"
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
 
 const (
-	toolName       string = "DeviceLister.go"
-	toolVersion    string = "2.0.0"
-	httpUserAgent  string = toolName + "/" + toolVersion
-	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
-	errSuccess     int    = 0
+	toolName            string = "DeviceLister.go"
+	toolVersion         string = "3.0.0"
+	toolID              string = toolName + "/" + toolVersion
+	envFileName         string = ".xmcenv"
+	gqlDeviceQuery      string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
+	errSuccess          int    = 0
+	errGeneric          int    = 1
+	errUsage            int    = 2
+	errClientSetup      int    = 10
+	errXMCCommunication int    = 11
+	errXMCResult        int    = 12
 )
+
+type appConfig struct {
+	XMCHost       string
+	XMCPort       uint
+	XMCPath       string
+	HTTPTimeout   uint
+	NoHTTPS       bool
+	InsecureHTTPS bool
+	BasicAuth     bool
+	XMCUserID     string
+	XMCSecret     string
+	PrintVersion  bool
+}
 
 // created with https://mholt.github.io/json-to-go/
 type deviceList struct {
@@ -61,89 +82,143 @@ type deviceList struct {
 	} `json:"data"`
 }
 
-func main() {
-	var httpHost string
-	var httpTimeoutSecs uint
-	var noHTTPS bool
-	var insecureHTTPS bool
-	var username string
-	var password string
-	var clientID string
-	var clientSecret string
-	var printVersion bool
+var (
+	config appConfig
+)
 
-	flag.StringVar(&httpHost, "host", "localhost", "XMC Hostname / IP")
-	flag.UintVar(&httpTimeoutSecs, "timeout", 5, "Timeout for HTTP(S) connections")
-	flag.BoolVar(&noHTTPS, "nohttps", false, "Use HTTP instead of HTTPS")
-	flag.BoolVar(&insecureHTTPS, "insecurehttps", false, "Do not validate HTTPS certificates")
-	flag.StringVar(&username, "username", "admin", "Username for HTTP Basic Auth")
-	flag.StringVar(&password, "password", "", "Password for HTTP Basic Auth")
-	flag.StringVar(&clientID, "clientid", "", "Client ID for OAuth")
-	flag.StringVar(&clientSecret, "clientsecret", "", "Client Secret for OAuth")
-	flag.BoolVar(&printVersion, "version", false, "Print version information and exit")
+func parseCLIOptions() {
+	flag.StringVar(&config.XMCHost, "host", envordef.StringVal("XMCHOST", ""), "XMC Hostname / IP")
+	flag.UintVar(&config.XMCPort, "port", envordef.UintVal("XMCPORT", 8443), "HTTP port where XMC is listening")
+	flag.StringVar(&config.XMCPath, "path", envordef.StringVal("XMCPATH", ""), "Path where XMC is reachable")
+	flag.UintVar(&config.HTTPTimeout, "timeout", envordef.UintVal("XMCTIMEOUT", 5), "Timeout for HTTP(S) connections")
+	flag.BoolVar(&config.NoHTTPS, "nohttps", envordef.BoolVal("XMCNOHTTPS", false), "Use HTTP instead of HTTPS")
+	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", envordef.BoolVal("XMCINSECUREHTTPS", false), "Do not validate HTTPS certificates")
+	flag.StringVar(&config.XMCUserID, "userid", envordef.StringVal("XMCUSERID", ""), "Client ID (OAuth) or username (Basic Auth) for authentication")
+	flag.StringVar(&config.XMCSecret, "secret", envordef.StringVal("XMCSECRET", ""), "Client Secret (OAuth) or password (Basic Auth) for authentication")
+	flag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
+	flag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "This tool fetches lists all devices XMC knows about with up/down information.\n")
+		fmt.Fprintf(os.Stderr, "This tool lists all devices managed with XMC along with up/down information.\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Available options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "OAuth will be preferred over username/password.\n")
+		fmt.Fprintf(os.Stderr, "All options that take a value can be set via environment variables:\n")
+		fmt.Fprintf(os.Stderr, "  XMCHOST           -->  -host\n")
+		fmt.Fprintf(os.Stderr, "  XMCPORT           -->  -port\n")
+		fmt.Fprintf(os.Stderr, "  XMCPATH           -->  -path\n")
+		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT        -->  -timeout\n")
+		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS        -->  -nohttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCINSECUREHTTPS  -->  -insecurehttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCUSERID         -->  -userid\n")
+		fmt.Fprintf(os.Stderr, "  XMCSECRET         -->  -secret\n")
+		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH      -->  -basicauth\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Environment variables can also be configured via a file called %s,\n", envFileName)
+		fmt.Fprintf(os.Stderr, "located in the current directory or in the home directory of the current\n")
+		fmt.Fprintf(os.Stderr, "user.\n")
+		os.Exit(errUsage)
 	}
 	flag.Parse()
+}
 
-	if printVersion {
-		fmt.Println(httpUserAgent)
+func init() {
+	// if envFileName exists in the current directory, load it
+	localEnvFile := fmt.Sprintf("./%s", envFileName)
+	if _, localEnvErr := os.Stat(localEnvFile); localEnvErr == nil {
+		if loadErr := godotenv.Load(localEnvFile); loadErr != nil {
+			fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", localEnvFile, loadErr)
+		}
+	}
+
+	// if envFileName exists in the user's home directory, load it
+	if homeDir, homeErr := os.UserHomeDir(); homeErr == nil {
+		homeEnvFile := fmt.Sprintf("%s/%s", homeDir, ".xmcenv")
+		if _, homeEnvErr := os.Stat(homeEnvFile); homeEnvErr == nil {
+			if loadErr := godotenv.Load(homeEnvFile); loadErr != nil {
+				fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", homeEnvFile, loadErr)
+			}
+		}
+	}
+}
+
+func main() {
+	parseCLIOptions()
+
+	if config.PrintVersion {
+		fmt.Println(toolID)
 		os.Exit(errSuccess)
 	}
-
-	client := xmcnbiclient.New(httpHost)
-	client.SetUserAgent(httpUserAgent)
-	client.UseHTTPS()
-	if noHTTPS {
-		client.UseHTTP()
+	if config.XMCHost == "" {
+		fmt.Fprintln(os.Stderr, "Variable -host must be defined. Use -h to get help.")
+		os.Exit(errUsage)
 	}
-	client.UseBasicAuth(username, password)
-	if clientID != "" && clientSecret != "" {
-		client.UseOAuth(clientID, clientSecret)
+
+	client := xmcnbiclient.New(config.XMCHost)
+	client.SetUserAgent(toolID)
+	timeoutErr := client.SetTimeout(config.HTTPTimeout)
+	if timeoutErr != nil {
+		fmt.Fprintf(os.Stderr, "Could not set HTTP timeout: %s\n", timeoutErr)
+		os.Exit(errClientSetup)
 	}
 	client.UseSecureHTTPS()
-	if insecureHTTPS {
+	if config.InsecureHTTPS {
 		client.UseInsecureHTTPS()
 	}
-	timeoutErr := client.SetTimeout(httpTimeoutSecs)
-	if timeoutErr != nil {
-		log.Fatalf("Could not set HTTP timeout: %s\n", timeoutErr)
+	client.UseHTTPS()
+	if config.NoHTTPS {
+		client.UseHTTP()
+	}
+	portErr := client.SetPort(config.XMCPort)
+	if portErr != nil {
+		fmt.Fprintf(os.Stderr, "Could not set port: %s\n", portErr)
+		os.Exit(errClientSetup)
+	}
+	client.SetBasePath(config.XMCPath)
+	client.UseOAuth(config.XMCUserID, config.XMCSecret)
+	if config.BasicAuth {
+		client.UseBasicAuth(config.XMCUserID, config.XMCSecret)
 	}
 
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
 	if resErr != nil {
-		log.Fatal(resErr)
+		fmt.Fprintf(os.Stderr, "Could not query XMC: %s\n", resErr)
+		os.Exit(errXMCCommunication)
 	}
 
 	devices := deviceList{}
 	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		fmt.Fprintf(os.Stderr, "Could not read result: %s\n", jsonErr)
+		os.Exit(errXMCResult)
 	}
 
 	var family string
 	var devName string
+	var stateSym string
+	var stateText string
+	sort.Slice(devices.Data.Network.Devices[:], func(i int, j int) bool {
+		return devices.Data.Network.Devices[i].IP < devices.Data.Network.Devices[j].IP
+	})
 	for _, d := range devices.Data.Network.Devices {
 		family = d.DeviceData.Family
-		devName = d.SysName
 		if d.DeviceData.SubFamily != "" {
 			family = family + " " + d.DeviceData.SubFamily
 		}
+		devName = d.SysName
 		if devName == "" && d.NickName != "" {
 			devName = d.NickName
 		}
-		switch d.Up {
-		case true:
-			fmt.Printf("+ %s (%s %s \"%s\") is up.\n", d.IP, d.DeviceData.Vendor, family, devName)
-		default:
-			fmt.Printf("- %s (%s %s \"%s\") is down.\n", d.IP, d.DeviceData.Vendor, family, devName)
+		stateSym = "-"
+		stateText = "down"
+		if d.Up {
+			stateSym = "+"
+			stateText = "up"
 		}
+		fmt.Printf("%s %s (%s %s \"%s\") is %s.\n", stateSym, d.IP, d.DeviceData.Vendor, family, devName, stateText)
 	}
+
+	os.Exit(errSuccess)
 }
