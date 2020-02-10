@@ -20,8 +20,9 @@ Other branches, for example for developing specific features, may be created and
 
 ## Dependencies
 
-DeviceLister uses the modules [envordef](https://gitlab.com/rbrt-weiler/go-module-envordef) and [xmcnbiclient](https://gitlab.com/rbrt-weiler/go-module-xmcnbiclient). Execute...
+DeviceLister uses the modules [godotenv](https://github.com/joho/godotenv), [envordef](https://gitlab.com/rbrt-weiler/go-module-envordef) and [xmcnbiclient](https://gitlab.com/rbrt-weiler/go-module-xmcnbiclient). Execute...
 
+1. `go get -u github.com/joho/godotenv`
 1. `go get -u gitlab.com/rbrt-weiler/go-module-envordef`
 1. `go get -u gitlab.com/rbrt-weiler/go-module-xmcnbiclient`
 
@@ -40,11 +41,11 @@ Tested with [go1.13](https://golang.org/doc/go1.13).
 <pre>
 Available options:
   -basicauth
-    	Use HTTP Basic Auth instead of OAuth (default true)
+    	Use HTTP Basic Auth instead of OAuth
   -host string
-    	XMC Hostname / IP (default "xmc.de-rrhtlp.w1-int.weiler.one")
+    	XMC Hostname / IP
   -insecurehttps
-    	Do not validate HTTPS certificates (default true)
+    	Do not validate HTTPS certificates
   -nohttps
     	Use HTTP instead of HTTPS
   -path string
@@ -52,24 +53,28 @@ Available options:
   -port uint
     	HTTP port where XMC is listening (default 8443)
   -secret string
-    	Client Secret (OAuth) or password (Basic Auth) for authentication (default "abc123")
+    	Client Secret (OAuth) or password (Basic Auth) for authentication
   -timeout uint
     	Timeout for HTTP(S) connections (default 5)
   -userid string
-    	Client ID (OAuth) or username (Basic Auth) for authentication (default "root")
+    	Client ID (OAuth) or username (Basic Auth) for authentication
   -version
     	Print version information and exit
 
 All options that take a value can be set via environment variables:
-  XMCHOST       -->  -host
-  XMCPORT       -->  -port
-  XMCPATH       -->  -path
-  XMCTIMEOUT    -->  -timeout
-  XMCNOHTTPS    -->  -nohttps
-  XMCINSECURE   -->  -insecurehttps
-  XMCUSERID     -->  -userid
-  XMCSECRET     -->  -secret
-  XMCBASICAUTH  -->  -basicauth
+  XMCHOST           -->  -host
+  XMCPORT           -->  -port
+  XMCPATH           -->  -path
+  XMCTIMEOUT        -->  -timeout
+  XMCNOHTTPS        -->  -nohttps
+  XMCINSECUREHTTPS  -->  -insecurehttps
+  XMCUSERID         -->  -userid
+  XMCSECRET         -->  -secret
+  XMCBASICAUTH      -->  -basicauth
+
+Environment variables can also be configured via a file called .xmcenv,
+located in the current directory or in the home directory of the current
+user.
 </pre>
 
 ## Authentication

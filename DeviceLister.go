@@ -31,6 +31,7 @@ import (
 	"os"
 	"path"
 
+	godotenv "github.com/joho/godotenv"
 	envordef "gitlab.com/rbrt-weiler/go-module-envordef"
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
@@ -39,6 +40,7 @@ const (
 	toolName       string = "DeviceLister.go"
 	toolVersion    string = "3.0.0-dev"
 	toolID         string = toolName + "/" + toolVersion
+	envFileName    string = ".xmcenv"
 	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
 	errSuccess     int    = 0
 	errGeneric     int    = 1
@@ -87,7 +89,7 @@ func parseCLIOptions() {
 	flag.StringVar(&config.XMCPath, "path", envordef.StringVal("XMCPATH", ""), "Path where XMC is reachable")
 	flag.UintVar(&config.HTTPTimeout, "timeout", envordef.UintVal("XMCTIMEOUT", 5), "Timeout for HTTP(S) connections")
 	flag.BoolVar(&config.NoHTTPS, "nohttps", envordef.BoolVal("XMCNOHTTPS", false), "Use HTTP instead of HTTPS")
-	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", envordef.BoolVal("XMCINSECURE", false), "Do not validate HTTPS certificates")
+	flag.BoolVar(&config.InsecureHTTPS, "insecurehttps", envordef.BoolVal("XMCINSECUREHTTPS", false), "Do not validate HTTPS certificates")
 	flag.StringVar(&config.XMCUserID, "userid", envordef.StringVal("XMCUSERID", ""), "Client ID (OAuth) or username (Basic Auth) for authentication")
 	flag.StringVar(&config.XMCSecret, "secret", envordef.StringVal("XMCSECRET", ""), "Client Secret (OAuth) or password (Basic Auth) for authentication")
 	flag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
@@ -101,18 +103,42 @@ func parseCLIOptions() {
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "All options that take a value can be set via environment variables:\n")
-		fmt.Fprintf(os.Stderr, "  XMCHOST       -->  -host\n")
-		fmt.Fprintf(os.Stderr, "  XMCPORT       -->  -port\n")
-		fmt.Fprintf(os.Stderr, "  XMCPATH       -->  -path\n")
-		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT    -->  -timeout\n")
-		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS    -->  -nohttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCINSECURE   -->  -insecurehttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCUSERID     -->  -userid\n")
-		fmt.Fprintf(os.Stderr, "  XMCSECRET     -->  -secret\n")
-		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH  -->  -basicauth\n")
+		fmt.Fprintf(os.Stderr, "  XMCHOST           -->  -host\n")
+		fmt.Fprintf(os.Stderr, "  XMCPORT           -->  -port\n")
+		fmt.Fprintf(os.Stderr, "  XMCPATH           -->  -path\n")
+		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT        -->  -timeout\n")
+		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS        -->  -nohttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCINSECUREHTTPS  -->  -insecurehttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCUSERID         -->  -userid\n")
+		fmt.Fprintf(os.Stderr, "  XMCSECRET         -->  -secret\n")
+		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH      -->  -basicauth\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Environment variables can also be configured via a file called %s,\n", envFileName)
+		fmt.Fprintf(os.Stderr, "located in the current directory or in the home directory of the current\n")
+		fmt.Fprintf(os.Stderr, "user.\n")
 		os.Exit(errUsage)
 	}
 	flag.Parse()
+}
+
+func init() {
+	// if envFileName exists in the current directory, load it
+	localEnvFile := fmt.Sprintf("./%s", envFileName)
+	if _, localEnvErr := os.Stat(localEnvFile); localEnvErr == nil {
+		if loadErr := godotenv.Load(localEnvFile); loadErr != nil {
+			fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", localEnvFile, loadErr)
+		}
+	}
+
+	// if envFileName exists in the user's home directory, load it
+	if homeDir, homeErr := os.UserHomeDir(); homeErr == nil {
+		homeEnvFile := fmt.Sprintf("%s/%s", homeDir, ".xmcenv")
+		if _, homeEnvErr := os.Stat(homeEnvFile); homeEnvErr == nil {
+			if loadErr := godotenv.Load(homeEnvFile); loadErr != nil {
+				fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", homeEnvFile, loadErr)
+			}
+		}
+	}
 }
 
 func main() {
