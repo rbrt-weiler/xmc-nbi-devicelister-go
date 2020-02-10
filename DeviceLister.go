@@ -98,7 +98,7 @@ func parseCLIOptions() {
 	flag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
 	flag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "This tool queries the XMC API and prints the raw reply (JSON) to stdout.\n")
+		fmt.Fprintf(os.Stderr, "This tool lists all devices managed with XMC along with up/down information.\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
 		fmt.Fprintf(os.Stderr, "\n")
