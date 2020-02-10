@@ -27,7 +27,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path"
 
@@ -37,14 +36,17 @@ import (
 )
 
 const (
-	toolName       string = "DeviceLister.go"
-	toolVersion    string = "3.0.0-dev"
-	toolID         string = toolName + "/" + toolVersion
-	envFileName    string = ".xmcenv"
-	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
-	errSuccess     int    = 0
-	errGeneric     int    = 1
-	errUsage       int    = 2
+	toolName            string = "DeviceLister.go"
+	toolVersion         string = "3.0.0-dev"
+	toolID              string = toolName + "/" + toolVersion
+	envFileName         string = ".xmcenv"
+	gqlDeviceQuery      string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
+	errSuccess          int    = 0
+	errGeneric          int    = 1
+	errUsage            int    = 2
+	errClientSetup      int    = 10
+	errXMCCommunication int    = 11
+	errXMCResult        int    = 12
 )
 
 type appConfig struct {
@@ -157,7 +159,8 @@ func main() {
 	client.SetUserAgent(toolID)
 	timeoutErr := client.SetTimeout(config.HTTPTimeout)
 	if timeoutErr != nil {
-		log.Fatalf("Could not set HTTP timeout: %s\n", timeoutErr)
+		fmt.Fprintf(os.Stderr, "Could not set HTTP timeout: %s\n", timeoutErr)
+		os.Exit(errClientSetup)
 	}
 	client.UseSecureHTTPS()
 	if config.InsecureHTTPS {
@@ -169,8 +172,8 @@ func main() {
 	}
 	portErr := client.SetPort(config.XMCPort)
 	if portErr != nil {
-		fmt.Fprintf(os.Stderr, "Port could not be set: %s\n", portErr)
-		os.Exit(errGeneric)
+		fmt.Fprintf(os.Stderr, "Could not set port: %s\n", portErr)
+		os.Exit(errClientSetup)
 	}
 	client.SetBasePath(config.XMCPath)
 	client.UseOAuth(config.XMCUserID, config.XMCSecret)
@@ -180,13 +183,15 @@ func main() {
 
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
 	if resErr != nil {
-		log.Fatal(resErr)
+		fmt.Fprintf(os.Stderr, "Could not query XMC: %s\n", resErr)
+		os.Exit(errXMCCommunication)
 	}
 
 	devices := deviceList{}
 	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
-		log.Fatal(jsonErr)
+		fmt.Fprintf(os.Stderr, "Could not read result: %s\n", jsonErr)
+		os.Exit(errXMCResult)
 	}
 
 	var family string
