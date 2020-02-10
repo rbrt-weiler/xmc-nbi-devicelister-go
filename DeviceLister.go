@@ -196,21 +196,24 @@ func main() {
 
 	var family string
 	var devName string
+	var stateSym string
+	var stateText string
 	for _, d := range devices.Data.Network.Devices {
 		family = d.DeviceData.Family
-		devName = d.SysName
 		if d.DeviceData.SubFamily != "" {
 			family = family + " " + d.DeviceData.SubFamily
 		}
+		devName = d.SysName
 		if devName == "" && d.NickName != "" {
 			devName = d.NickName
 		}
-		switch d.Up {
-		case true:
-			fmt.Printf("+ %s (%s %s \"%s\") is up.\n", d.IP, d.DeviceData.Vendor, family, devName)
-		default:
-			fmt.Printf("- %s (%s %s \"%s\") is down.\n", d.IP, d.DeviceData.Vendor, family, devName)
+		stateSym = "-"
+		stateText = "down"
+		if d.Up {
+			stateSym = "+"
+			stateText = "up"
 		}
+		fmt.Printf("%s %s (%s %s \"%s\") is %s.\n", stateSym, d.IP, d.DeviceData.Vendor, family, devName, stateText)
 	}
 
 	os.Exit(errSuccess)
