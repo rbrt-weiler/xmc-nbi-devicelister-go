@@ -40,6 +40,7 @@ const (
 	toolName            string = "DeviceLister.go"
 	toolVersion         string = "3.0.0"
 	toolID              string = toolName + "/" + toolVersion
+	toolURL             string = "https://gitlab.com/rbrt-weiler/xmc-nbi-devicelister-go"
 	envFileName         string = ".xmcenv"
 	gqlDeviceQuery      string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
 	errSuccess          int    = 0
@@ -98,6 +99,9 @@ func parseCLIOptions() {
 	flag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
 	flag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s\n", toolID)
+		fmt.Fprintf(os.Stderr, "%s\n", toolURL)
+		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "This tool lists all devices managed with XMC along with up/down information.\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
