@@ -38,7 +38,7 @@ Tested with [go1.13](https://golang.org/doc/go1.13).
 
 `DeviceLister -h`:
 
-<pre>
+```text
 Available options:
   -basicauth
     	Use HTTP Basic Auth instead of OAuth
@@ -75,7 +75,7 @@ All options that take a value can be set via environment variables:
 Environment variables can also be configured via a file called .xmcenv,
 located in the current directory or in the home directory of the current
 user.
-</pre>
+```
 
 ## Authentication
 
