@@ -50,9 +50,10 @@ variables:
 
 build-master:
   stage: build
-  except:
-    - stable
-    - tags
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: always
+      allow_failure: true
   cache:
     key: "dev-$CI_COMMIT_SHA"
     paths:
@@ -64,9 +65,10 @@ build-master:
 
 test-master:
   stage: test
-  except:
-    - stable
-    - tags
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+      when: on_success
+      allow_failure: true
   cache:
     key: "dev-$CI_COMMIT_SHA"
     paths:
@@ -79,10 +81,9 @@ test-master:
 
 build-stable:
   stage: build
-  only:
-    - stable
-  except:
-    - tags
+  rules:
+    - if: $CI_COMMIT_BRANCH == "stable"
+      when: always
   cache:
     key: "staging-$CI_COMMIT_SHA"
     paths:
@@ -93,10 +94,9 @@ build-stable:
 
 test-stable:
   stage: test
-  only:
-    - stable
-  except:
-    - tags
+  rules:
+    - if: $CI_COMMIT_BRANCH == "stable"
+      when: on_success
   cache:
     key: "staging-$CI_COMMIT_SHA"
     paths:
@@ -114,8 +114,9 @@ test-stable:
 
 build-tagged:
   stage: build
-  only:
-    - tags
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
   cache:
     key: "release-$CI_COMMIT_SHA"
     paths:
@@ -127,8 +128,9 @@ build-tagged:
 
 test-tagged:
   stage: test
-  only:
-    - tags
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: on_success
   cache:
     key: "release-$CI_COMMIT_SHA"
     paths:
@@ -138,8 +140,9 @@ test-tagged:
 
 deploy-tagged:
   stage: deploy
-  only:
-    - tags
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: on_success
   cache:
     key: "release-$CI_COMMIT_SHA"
     paths:
