@@ -87,15 +87,15 @@ func parseCLIOptions() {
 		pflag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "All options that take a value can be set via environment variables:\n")
-		fmt.Fprintf(os.Stderr, "  XMCHOST           -->  -host\n")
-		fmt.Fprintf(os.Stderr, "  XMCPORT           -->  -port\n")
-		fmt.Fprintf(os.Stderr, "  XMCPATH           -->  -path\n")
-		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT        -->  -timeout\n")
-		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS        -->  -nohttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCINSECUREHTTPS  -->  -insecurehttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCUSERID         -->  -userid\n")
-		fmt.Fprintf(os.Stderr, "  XMCSECRET         -->  -secret\n")
-		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH      -->  -basicauth\n")
+		fmt.Fprintf(os.Stderr, "  XMCHOST           -->  --host\n")
+		fmt.Fprintf(os.Stderr, "  XMCPORT           -->  --port\n")
+		fmt.Fprintf(os.Stderr, "  XMCPATH           -->  --path\n")
+		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT        -->  --timeout\n")
+		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS        -->  --nohttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCINSECUREHTTPS  -->  --insecurehttps\n")
+		fmt.Fprintf(os.Stderr, "  XMCUSERID         -->  --userid\n")
+		fmt.Fprintf(os.Stderr, "  XMCSECRET         -->  --secret\n")
+		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH      -->  --basicauth\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Environment variables can also be configured via a file called %s,\n", envFileName)
 		fmt.Fprintf(os.Stderr, "located in the current directory or in the home directory of the current\n")
@@ -133,7 +133,7 @@ func main() {
 		os.Exit(errSuccess)
 	}
 	if config.XMCHost == "" {
-		fmt.Fprintln(os.Stderr, "Variable -host must be defined. Use -h to get help.")
+		fmt.Fprintln(os.Stderr, "Variable --host must be defined. Use --help to get help.")
 		os.Exit(errUsage)
 	}
 
