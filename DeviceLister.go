@@ -7,7 +7,9 @@ import (
 	"path"
 	"sort"
 
+	text "github.com/jedib0t/go-pretty/v6/text"
 	godotenv "github.com/joho/godotenv"
+	consolesize "github.com/nathan-fiscaletti/consolesize-go"
 	pflag "github.com/spf13/pflag"
 	envordef "gitlab.com/rbrt-weiler/go-module-envordef"
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
@@ -27,6 +29,30 @@ const (
 	errXMCCommunication int    = 11
 	errXMCResult        int    = 12
 )
+
+// consoleHelper encapsulates functionality for pretty printing on the console.
+type consoleHelper struct {
+	Rows int
+	Cols int
+}
+
+// Updates the consoleHelper instance with the current console dimensions.
+func (c *consoleHelper) UpdateDimensions() {
+	c.Cols, c.Rows = consolesize.GetConsoleSize()
+}
+
+// Like fmt.Sprintf, but with text wrapping based on console size.
+func (c *consoleHelper) Sprintf(format string, a ...interface{}) string {
+	if c.Cols == 0 || c.Rows == 0 {
+		c.UpdateDimensions()
+	}
+	return text.WrapSoft(fmt.Sprintf(format, a...), c.Cols)
+}
+
+// Like fmt.Sprint, but with text wrapping based on console size.
+func (c *consoleHelper) Sprint(s string) string {
+	return c.Sprintf("%s", s)
+}
 
 type appConfig struct {
 	XMCHost       string
@@ -61,7 +87,8 @@ type deviceList struct {
 }
 
 var (
-	config appConfig
+	config  appConfig
+	console consoleHelper
 )
 
 func parseCLIOptions() {
@@ -77,36 +104,37 @@ func parseCLIOptions() {
 	pflag.BoolVar(&config.BasicAuth, "basicauth", envordef.BoolVal("XMCBASICAUTH", false), "Use HTTP Basic Auth instead of OAuth")
 	pflag.BoolVar(&config.PrintVersion, "version", false, "Print version information and exit")
 	pflag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "%s\n", toolID)
-		fmt.Fprintf(os.Stderr, "%s\n", toolURL)
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint(toolID))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint(toolURL))
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "This tool lists all devices managed with XMC along with up/down information.\n")
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("This tool lists all devices managed with XMC along with up/down information."))
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", path.Base(os.Args[0]))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprintf("Usage: %s [options]", path.Base(os.Args[0])))
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Available options:\n")
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("Available options:"))
 		pflag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "All options that take a value can be set via environment variables:\n")
-		fmt.Fprintf(os.Stderr, "  XMCHOST           -->  --host\n")
-		fmt.Fprintf(os.Stderr, "  XMCPORT           -->  --port\n")
-		fmt.Fprintf(os.Stderr, "  XMCPATH           -->  --path\n")
-		fmt.Fprintf(os.Stderr, "  XMCTIMEOUT        -->  --timeout\n")
-		fmt.Fprintf(os.Stderr, "  XMCNOHTTPS        -->  --nohttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCINSECUREHTTPS  -->  --insecurehttps\n")
-		fmt.Fprintf(os.Stderr, "  XMCUSERID         -->  --userid\n")
-		fmt.Fprintf(os.Stderr, "  XMCSECRET         -->  --secret\n")
-		fmt.Fprintf(os.Stderr, "  XMCBASICAUTH      -->  --basicauth\n")
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("All options that take a value can be set via environment variables:"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCHOST           -->  --host"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCPORT           -->  --port"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCPATH           -->  --path"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCTIMEOUT        -->  --timeout"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCNOHTTPS        -->  --nohttps"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCINSECUREHTTPS  -->  --insecurehttps"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCUSERID         -->  --userid"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCSECRET         -->  --secret"))
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprint("  XMCBASICAUTH      -->  --basicauth"))
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Environment variables can also be configured via a file called %s,\n", envFileName)
-		fmt.Fprintf(os.Stderr, "located in the current directory or in the home directory of the current\n")
-		fmt.Fprintf(os.Stderr, "user.\n")
+		fmt.Fprintf(os.Stderr, "%s\n", console.Sprintf("Environment variables can also be configured via a file called %s, located in the current directory or in the home directory of the current user.", envFileName))
 		os.Exit(errUsage)
 	}
 	pflag.Parse()
 }
 
 func init() {
+	// initialize console size
+	console.UpdateDimensions()
+
 	// if envFileName exists in the current directory, load it
 	localEnvFile := fmt.Sprintf("./%s", envFileName)
 	if _, localEnvErr := os.Stat(localEnvFile); localEnvErr == nil {
