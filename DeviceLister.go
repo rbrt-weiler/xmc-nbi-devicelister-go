@@ -15,19 +15,24 @@ import (
 	xmcnbiclient "gitlab.com/rbrt-weiler/go-module-xmcnbiclient"
 )
 
+// Definitions used within the code.
 const (
-	toolName            string = "DeviceLister.go"
-	toolVersion         string = "4.0.0-dev"
-	toolID              string = toolName + "/" + toolVersion
-	toolURL             string = "https://gitlab.com/rbrt-weiler/xmc-nbi-devicelister-go"
-	envFileName         string = ".xmcenv"
-	gqlDeviceQuery      string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
-	errSuccess          int    = 0
-	errGeneric          int    = 1
-	errUsage            int    = 2
-	errClientSetup      int    = 10
-	errXMCCommunication int    = 11
-	errXMCResult        int    = 12
+	toolName       string = "DeviceLister.go"
+	toolVersion    string = "4.0.0-dev"
+	toolID         string = toolName + "/" + toolVersion
+	toolURL        string = "https://gitlab.com/rbrt-weiler/xmc-nbi-devicelister-go"
+	envFileName    string = ".xmcenv"
+	gqlDeviceQuery string = "query { network { devices { up ip sysName nickName deviceData { vendor family subFamily } } } }"
+)
+
+// Error codes.
+const (
+	errSuccess          int = 0  // No error
+	errGeneric          int = 1  // Generic error
+	errUsage            int = 2  // Usage error
+	errClientSetup      int = 10 // Error creating an API client
+	errXMCCommunication int = 11 // Error while querying XMC
+	errXMCResult        int = 12 // Error parsing the rsult returned by XMC
 )
 
 // consoleHelper encapsulates functionality for pretty printing on the console.
@@ -54,6 +59,7 @@ func (c *consoleHelper) Sprint(s string) string {
 	return c.Sprintf("%s", s)
 }
 
+// appConfig stores the application configuration once parsed by flags.
 type appConfig struct {
 	XMCHost       string
 	XMCPort       uint
@@ -67,7 +73,7 @@ type appConfig struct {
 	PrintVersion  bool
 }
 
-// created with https://mholt.github.io/json-to-go/
+// deviceList mimics the data structure returned by XMC for easy parsing into Go variables.
 type deviceList struct {
 	Data struct {
 		Network struct {
@@ -86,11 +92,13 @@ type deviceList struct {
 	} `json:"data"`
 }
 
+// Global variables used throughout the program.
 var (
 	config  appConfig
 	console consoleHelper
 )
 
+// parseCLIOptions parses all options passed by env or CLI into the config variable.
 func parseCLIOptions() {
 	pflag.CommandLine.SortFlags = false
 	pflag.StringVarP(&config.XMCHost, "host", "h", envordef.StringVal("XMCHOST", ""), "XMC Hostname / IP")
@@ -131,6 +139,7 @@ func parseCLIOptions() {
 	pflag.Parse()
 }
 
+// init sets up consoleHelper and loads environment files if available.
 func init() {
 	// initialize console size
 	console.UpdateDimensions()
@@ -154,18 +163,23 @@ func init() {
 	}
 }
 
+// main ties everything together.
 func main() {
+	// Parse all valid CLI options into variables.
 	parseCLIOptions()
 
+	// Print version information and exit.
 	if config.PrintVersion {
 		fmt.Println(toolID)
 		os.Exit(errSuccess)
 	}
+	// Check that the option "host" has been set.
 	if config.XMCHost == "" {
 		fmt.Fprintln(os.Stderr, "Variable --host must be defined. Use --help to get help.")
 		os.Exit(errUsage)
 	}
 
+	// Set up a NBI client
 	client := xmcnbiclient.New(config.XMCHost)
 	client.SetUserAgent(toolID)
 	timeoutErr := client.SetTimeout(config.HTTPTimeout)
@@ -192,12 +206,14 @@ func main() {
 		client.UseBasicAuth(config.XMCUserID, config.XMCSecret)
 	}
 
+	// Call the API.
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
 	if resErr != nil {
 		fmt.Fprintf(os.Stderr, "Could not query XMC: %s\n", resErr)
 		os.Exit(errXMCCommunication)
 	}
 
+	// Parse the API result into a Go sructure.
 	devices := deviceList{}
 	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
@@ -205,6 +221,7 @@ func main() {
 		os.Exit(errXMCResult)
 	}
 
+	// Work on the data and print the result.
 	var family string
 	var devName string
 	var stateSym string
@@ -230,5 +247,6 @@ func main() {
 		fmt.Printf("%s %s (%s %s \"%s\") is %s.\n", stateSym, d.IP, d.DeviceData.Vendor, family, devName, stateText)
 	}
 
+	// Exit with an appropriate exit code.
 	os.Exit(errSuccess)
 }
