@@ -18,7 +18,7 @@ import (
 // Definitions used within the code.
 const (
 	toolName       string = "DeviceLister.go"
-	toolVersion    string = "4.0.0-dev"
+	toolVersion    string = "4.0.0"
 	toolID         string = toolName + "/" + toolVersion
 	toolURL        string = "https://gitlab.com/rbrt-weiler/xmc-nbi-devicelister-go"
 	envFileName    string = ".xmcenv"
