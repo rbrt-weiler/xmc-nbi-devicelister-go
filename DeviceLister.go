@@ -123,7 +123,7 @@ func init() {
 	localEnvFile := fmt.Sprintf("./%s", envFileName)
 	if _, localEnvErr := os.Stat(localEnvFile); localEnvErr == nil {
 		if loadErr := godotenv.Load(localEnvFile); loadErr != nil {
-			fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", localEnvFile, loadErr)
+			cons.Fprintf(os.Stderr, "Could not load env file <%s>: %s\n", localEnvFile, loadErr)
 		}
 	}
 
@@ -132,7 +132,7 @@ func init() {
 		homeEnvFile := fmt.Sprintf("%s/%s", homeDir, ".xmcenv")
 		if _, homeEnvErr := os.Stat(homeEnvFile); homeEnvErr == nil {
 			if loadErr := godotenv.Load(homeEnvFile); loadErr != nil {
-				fmt.Fprintf(os.Stderr, "Could not load env file <%s>: %s", homeEnvFile, loadErr)
+				cons.Fprintf(os.Stderr, "Could not load env file <%s>: %s\n", homeEnvFile, loadErr)
 			}
 		}
 	}
@@ -145,12 +145,12 @@ func main() {
 
 	// Print version information and exit.
 	if config.PrintVersion {
-		fmt.Println(toolID)
+		cons.Println(toolID)
 		os.Exit(errSuccess)
 	}
 	// Check that the option "host" has been set.
 	if config.XMCHost == "" {
-		fmt.Fprintln(os.Stderr, "Variable --host must be defined. Use --help to get help.")
+		cons.Fprintln(os.Stderr, "Variable --host must be defined. Use --help to get help.")
 		os.Exit(errUsage)
 	}
 
@@ -159,7 +159,7 @@ func main() {
 	client.SetUserAgent(toolID)
 	timeoutErr := client.SetTimeout(config.HTTPTimeout)
 	if timeoutErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not set HTTP timeout: %s\n", timeoutErr)
+		cons.Fprintf(os.Stderr, "Could not set HTTP timeout: %s\n", timeoutErr)
 		os.Exit(errClientSetup)
 	}
 	client.UseSecureHTTPS()
@@ -172,7 +172,7 @@ func main() {
 	}
 	portErr := client.SetPort(config.XMCPort)
 	if portErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not set port: %s\n", portErr)
+		cons.Fprintf(os.Stderr, "Could not set port: %s\n", portErr)
 		os.Exit(errClientSetup)
 	}
 	client.SetBasePath(config.XMCPath)
@@ -184,7 +184,7 @@ func main() {
 	// Call the API.
 	res, resErr := client.QueryAPI(gqlDeviceQuery)
 	if resErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not query XMC: %s\n", resErr)
+		cons.Fprintf(os.Stderr, "Could not query XMC: %s\n", resErr)
 		os.Exit(errXMCCommunication)
 	}
 
@@ -192,7 +192,7 @@ func main() {
 	devices := deviceList{}
 	jsonErr := json.Unmarshal(res, &devices)
 	if jsonErr != nil {
-		fmt.Fprintf(os.Stderr, "Could not read result: %s\n", jsonErr)
+		cons.Fprintf(os.Stderr, "Could not read result: %s\n", jsonErr)
 		os.Exit(errXMCResult)
 	}
 
@@ -219,7 +219,7 @@ func main() {
 			stateSym = "+"
 			stateText = "up"
 		}
-		fmt.Printf("%s %s (%s %s \"%s\") is %s.\n", stateSym, d.IP, d.DeviceData.Vendor, family, devName, stateText)
+		cons.Printf("%s %s (%s %s \"%s\") is %s.\n", stateSym, d.IP, d.DeviceData.Vendor, family, devName, stateText)
 	}
 
 	// Exit with an appropriate exit code.
